@@ -6,6 +6,7 @@ import { randomMobNickname } from "@/lib/mobNames";
 const POSTS_KEY = "mobforest:mock:posts";
 const NICKNAME_KEY = "mobforest:mock:nickname";
 const reportedKey = (postId: string) => `mobforest:mock:reported:${postId}`;
+const passwordKey = (postId: string) => `mobforest:mock:pw:${postId}`;
 
 // mock 모드에서도 세션(브라우저)당 닉네임 하나를 뽑아 저장하고 계속 재사용한다.
 function getSessionNickname(): string {
@@ -41,6 +42,7 @@ export function mockCreatePost(input: {
   category: Category;
   content: string;
   image_url?: string | null;
+  password: string;
 }): Post {
   const post: Post = {
     id: crypto.randomUUID(),
@@ -55,7 +57,23 @@ export function mockCreatePost(input: {
   };
 
   writeAll([post, ...readAll()]);
+  // 목업 모드는 이 브라우저 안에서만 도는 데모 데이터라 평문 저장으로 충분하다.
+  window.localStorage.setItem(passwordKey(post.id), input.password);
   return post;
+}
+
+export function mockDeletePost(
+  postId: string,
+  password: string
+): { ok: boolean; message: string } {
+  const stored = window.localStorage.getItem(passwordKey(postId));
+  if (stored === null || stored !== password) {
+    return { ok: false, message: "비밀번호가 맞지 않아요." };
+  }
+
+  writeAll(readAll().filter((p) => p.id !== postId));
+  window.localStorage.removeItem(passwordKey(postId));
+  return { ok: true, message: "삭제했어요." };
 }
 
 type ReactionKind = "like" | "dislike";

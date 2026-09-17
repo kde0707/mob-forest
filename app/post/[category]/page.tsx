@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { isCategory, type Post } from "@/types/post";
+import { isCategory, POST_COLUMNS, type Post } from "@/types/post";
 import { getSupabasePublicServerClient } from "@/lib/supabase/publicServer";
 import BoardClient from "@/components/BoardClient";
 
@@ -19,7 +19,7 @@ export default async function BoardPage({
   if (supabase) {
     const { data } = await supabase
       .from("posts")
-      .select("*")
+      .select(POST_COLUMNS)
       .eq("category", category)
       .eq("status", "published")
       .order("created_at", { ascending: false })
