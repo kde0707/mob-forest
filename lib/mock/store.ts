@@ -39,6 +39,7 @@ export function mockCreatePost(input: {
     image_url: input.image_url ?? null,
     mob_nickname: randomMobNickname(),
     reaction_count: 0,
+    dislike_count: 0,
     report_count: 0,
     created_at: new Date().toISOString(),
   };
@@ -47,20 +48,34 @@ export function mockCreatePost(input: {
   return post;
 }
 
-export function mockToggleReaction(
+type ReactionKind = "like" | "dislike";
+
+export function mockSetReaction(
   postId: string,
-  wasReacted: boolean
-): { ok: boolean; reacted: boolean } {
+  current: ReactionKind | null,
+  next: ReactionKind | null
+): { ok: boolean; reaction: ReactionKind | null } {
   const posts = readAll();
   const index = posts.findIndex((p) => p.id === postId);
-  if (index === -1) return { ok: false, reacted: wasReacted };
+  if (index === -1) return { ok: false, reaction: current };
+
+  const post = posts[index];
+  let { reaction_count: likeCount, dislike_count: dislikeCount } = post;
+
+  // 기존 반응 제거
+  if (current === "like") likeCount = Math.max(0, likeCount - 1);
+  if (current === "dislike") dislikeCount = Math.max(0, dislikeCount - 1);
+  // 새 반응 반영
+  if (next === "like") likeCount += 1;
+  if (next === "dislike") dislikeCount += 1;
 
   posts[index] = {
-    ...posts[index],
-    reaction_count: Math.max(0, posts[index].reaction_count + (wasReacted ? -1 : 1)),
+    ...post,
+    reaction_count: likeCount,
+    dislike_count: dislikeCount,
   };
   writeAll(posts);
-  return { ok: true, reacted: !wasReacted };
+  return { ok: true, reaction: next };
 }
 
 export function mockReportPost(postId: string): {
