@@ -1,0 +1,33 @@
+name: CI
+
+# main으로의 push와 모든 PR에서 코드 품질을 자동 검사한다.
+# 배포(CD)는 Vercel이 담당하고, 여기서는 lint/타입체크/빌드만 검증한다.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Node 설치
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: 의존성 설치
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: 타입 체크
+        run: npx tsc --noEmit
+
+      - name: 빌드
+        run: npm run build
