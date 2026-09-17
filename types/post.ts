@@ -29,3 +29,8 @@ export interface Post {
   report_count: number;
   created_at: string;
 }
+
+// posts 테이블 select 시 항상 이 컬럼만 지정한다.
+// password_hash는 절대 클라이언트로 내려가면 안 되기 때문에 select("*")를 쓰지 않는다.
+export const POST_COLUMNS =
+  "id, category, content, image_url, mob_nickname, reaction_count, dislike_count, report_count, created_at";

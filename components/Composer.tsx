@@ -16,12 +16,18 @@ export default function Composer({
 }) {
   const [content, setContent] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!content.trim() || submitting) return;
+
+    if (password.length < 4 || password.length > 30) {
+      setError("삭제 비밀번호는 4~30자로 입력해주세요.");
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
@@ -31,10 +37,12 @@ export default function Composer({
         category,
         content,
         image_url: category === "meme" ? imageUrl : null,
+        password,
       });
       onPosted(post);
       setContent("");
       setImageUrl("");
+      setPassword("");
       setSubmitting(false);
       return;
     }
@@ -56,6 +64,7 @@ export default function Composer({
         category,
         content,
         image_url: category === "meme" ? imageUrl : undefined,
+        password,
       }),
     });
 
@@ -70,6 +79,7 @@ export default function Composer({
     onPosted(body.post);
     setContent("");
     setImageUrl("");
+    setPassword("");
     setSubmitting(false);
   }
 
@@ -94,9 +104,20 @@ export default function Composer({
         />
       )}
 
+      <input
+        type="password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        placeholder="삭제용 비밀번호 (4~30자)"
+        maxLength={30}
+        autoComplete="new-password"
+        className="mt-2 w-full rounded-full border-2 border-ink bg-surface px-3 py-1.5 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-accent"
+      />
+
       <div className="mt-3 flex items-center justify-between">
         <span className="text-xs text-ink-muted">
-          작성자 닉네임은 등록할 때 자동으로 붙어요
+          작성자 닉네임은 등록할 때 자동으로 붙어요. 비밀번호는 나중에 이 글을
+          지울 때 필요해요
         </span>
         <button
           type="submit"

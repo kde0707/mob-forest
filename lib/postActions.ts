@@ -1,6 +1,6 @@
 import { getSupabaseBrowserClient } from "./supabase/client";
 import { ensureAnonSession } from "./supabase/anonAuth";
-import { mockReportPost, mockSetReaction } from "./mock/store";
+import { mockDeletePost, mockReportPost, mockSetReaction } from "./mock/store";
 
 export type ReactionKind = "like" | "dislike";
 
@@ -73,4 +73,28 @@ export async function reportPost(
   }
 
   return { ok: true, message: "신고했어요. 확인할게요." };
+}
+
+export async function deletePost(
+  postId: string,
+  password: string
+): Promise<{ ok: boolean; message: string }> {
+  const supabase = getSupabaseBrowserClient();
+  if (!supabase) return mockDeletePost(postId, password);
+
+  // 삭제 권한은 세션이 아니라 비밀번호로 판별하므로 익명 세션이 없어도 호출 가능하다.
+  const { data, error } = await supabase.rpc("delete_post_with_password", {
+    post_id: postId,
+    password,
+  });
+
+  if (error) {
+    return { ok: false, message: "삭제에 실패했어요." };
+  }
+
+  if (!data) {
+    return { ok: false, message: "비밀번호가 맞지 않아요." };
+  }
+
+  return { ok: true, message: "삭제했어요." };
 }

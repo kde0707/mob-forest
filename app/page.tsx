@@ -1,4 +1,4 @@
-import { CATEGORIES, type Post } from "@/types/post";
+import { CATEGORIES, POST_COLUMNS, type Post } from "@/types/post";
 import { getSupabasePublicServerClient } from "@/lib/supabase/publicServer";
 import CategoryTile from "@/components/CategoryTile";
 import RecentPosts from "@/components/RecentPosts";
@@ -12,7 +12,7 @@ export default async function Home() {
   if (supabase) {
     const { data } = await supabase
       .from("posts")
-      .select("*")
+      .select(POST_COLUMNS)
       .eq("status", "published")
       .order("created_at", { ascending: false })
       .limit(6);

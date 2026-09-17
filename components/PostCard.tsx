@@ -4,8 +4,15 @@ import { CATEGORY_STYLE } from "@/lib/categoryStyles";
 import { formatRelativeTime } from "@/lib/formatTime";
 import ReactionBar from "./ReactionBar";
 import ReportButton from "./ReportButton";
+import DeleteButton from "./DeleteButton";
 
-export default function PostCard({ post }: { post: Post }) {
+export default function PostCard({
+  post,
+  onDeleted,
+}: {
+  post: Post;
+  onDeleted: (postId: string) => void;
+}) {
   const style = CATEGORY_STYLE[post.category];
 
   return (
@@ -43,7 +50,10 @@ export default function PostCard({ post }: { post: Post }) {
           initialLikes={post.reaction_count}
           initialDislikes={post.dislike_count}
         />
-        <ReportButton postId={post.id} />
+        <span className="flex items-center gap-3">
+          <DeleteButton postId={post.id} onDeleted={onDeleted} />
+          <ReportButton postId={post.id} />
+        </span>
       </div>
     </article>
   );
