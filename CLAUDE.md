@@ -56,7 +56,9 @@
 - 변수/함수명: 영어, `camelCase` / `PascalCase` / 상수는 `UPPER_SNAKE_CASE`
 - 커밋 메시지: Conventional Commits 형식 + 한글 요약 — `<type>(<scope>): <한글 요약>`
   - 예: `feat(post): 익명 글쓰기 폼 구현`
-  - 관련 이슈가 있으면 **제목 앞에 `[#이슈번호]`** 를 붙인다 — 예: `[#5] feat(post): 토벌일지 탭 기본 구조 추가`
+  - type별 gitmoji를 제목 맨 앞에 붙인다 — `feat` ✨ / `fix` 🐛 / `docs` 📝 / `refactor` ♻️ / `style` 💄 / `test` ✅ / `chore` 🔧 / `ci` 👷
+  - 관련 이슈가 있으면 **`[#이슈번호]`** 도 붙인다. 최종 순서: `이모지 [#번호] type(scope): 요약`
+    - 예: `✨ [#5] feat(post): 토벌일지 탭 기본 구조 추가`
 - 변경은 **최소 범위로**: 요청받지 않은 리팩토링이나 관련 없는 파일 수정은 하지 않음
 
 ## Git 워크플로우
