@@ -2,7 +2,7 @@ import Image from "next/image";
 import type { Post } from "@/types/post";
 import { CATEGORY_STYLE } from "@/lib/categoryStyles";
 import { formatRelativeTime } from "@/lib/formatTime";
-import ReactionButton from "./ReactionButton";
+import ReactionBar from "./ReactionBar";
 import ReportButton from "./ReportButton";
 
 export default function PostCard({ post }: { post: Post }) {
@@ -38,7 +38,11 @@ export default function PostCard({ post }: { post: Post }) {
       )}
 
       <div className="mt-4 flex items-center justify-between">
-        <ReactionButton postId={post.id} initialCount={post.reaction_count} />
+        <ReactionBar
+          postId={post.id}
+          initialLikes={post.reaction_count}
+          initialDislikes={post.dislike_count}
+        />
         <ReportButton postId={post.id} />
       </div>
     </article>

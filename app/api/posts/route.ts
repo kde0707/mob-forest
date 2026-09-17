@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseForRequest } from "@/lib/supabase/route";
-import { generateMobNickname, getRequestIp } from "@/lib/mobNickname";
+import { generateMobNickname } from "@/lib/mobNickname";
 import { isCategory } from "@/types/post";
 
 export async function POST(request: NextRequest) {
@@ -29,8 +29,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "서버 설정이 아직 안 됐어요." }, { status: 500 });
   }
 
-  const ip = getRequestIp(request.headers);
-  const mobNickname = generateMobNickname(ip);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "익명 세션이 유효하지 않아요." }, { status: 401 });
+  }
+
+  // 닉네임은 익명 세션 ID 기준으로 뽑아 같은 세션이면 항상 같은 닉네임이 되게 한다
+  const mobNickname = generateMobNickname(user.id);
 
   const { data, error } = await supabase
     .from("posts")

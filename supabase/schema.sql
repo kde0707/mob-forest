@@ -11,6 +11,7 @@ create table if not exists public.posts (
   mob_nickname text not null,
   author_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
   reaction_count integer not null default 0,
+  dislike_count integer not null default 0,
   report_count integer not null default 0,
   status text not null default 'published' check (status in ('published', 'hidden')),
   created_at timestamptz not null default now()
@@ -33,26 +34,32 @@ create policy "본인 글만 삭제 가능"
   on public.posts for delete
   using (auth.uid() = author_id);
 
--- 2. reactions: 공감
+-- 2. reactions: 공감 / 비추 (kind로 구분, 한 사람당 글 하나에 하나만)
 create table if not exists public.reactions (
   id uuid primary key default gen_random_uuid(),
   post_id uuid not null references public.posts (id) on delete cascade,
   author_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  kind text not null default 'like' check (kind in ('like', 'dislike')),
   created_at timestamptz not null default now(),
   unique (post_id, author_id)
 );
 
 alter table public.reactions enable row level security;
 
-create policy "누구나 공감 개수를 확인할 수 있음"
+create policy "누구나 공감/비추 개수를 확인할 수 있음"
   on public.reactions for select
   using (true);
 
-create policy "로그인(익명 포함)한 사용자만 공감 가능"
+create policy "로그인(익명 포함)한 사용자만 공감/비추 가능"
   on public.reactions for insert
   with check (auth.uid() = author_id);
 
-create policy "본인 공감만 취소 가능"
+create policy "본인 반응만 변경 가능"
+  on public.reactions for update
+  using (auth.uid() = author_id)
+  with check (auth.uid() = author_id);
+
+create policy "본인 반응만 취소 가능"
   on public.reactions for delete
   using (auth.uid() = author_id);
 
@@ -76,15 +83,38 @@ create policy "로그인(익명 포함)한 사용자만 신고 가능"
 -- (Supabase 대시보드에서 service role로만 조회)
 
 -- 4. 카운터 트리거: reactions/reports 증감을 posts에 반영
+-- kind별로 reaction_count(공감) / dislike_count(비추)를 나눠서 관리하고,
+-- 공감 <-> 비추 전환(UPDATE)도 양쪽 카운터를 함께 보정한다.
 create or replace function public.handle_reaction_change()
 returns trigger as $$
 begin
   if (tg_op = 'INSERT') then
-    update public.posts set reaction_count = reaction_count + 1 where id = new.post_id;
+    if (new.kind = 'like') then
+      update public.posts set reaction_count = reaction_count + 1 where id = new.post_id;
+    else
+      update public.posts set dislike_count = dislike_count + 1 where id = new.post_id;
+    end if;
     return new;
   elsif (tg_op = 'DELETE') then
-    update public.posts set reaction_count = greatest(reaction_count - 1, 0) where id = old.post_id;
+    if (old.kind = 'like') then
+      update public.posts set reaction_count = greatest(reaction_count - 1, 0) where id = old.post_id;
+    else
+      update public.posts set dislike_count = greatest(dislike_count - 1, 0) where id = old.post_id;
+    end if;
     return old;
+  elsif (tg_op = 'UPDATE' and new.kind <> old.kind) then
+    if (new.kind = 'like') then
+      update public.posts
+        set reaction_count = reaction_count + 1,
+            dislike_count = greatest(dislike_count - 1, 0)
+        where id = new.post_id;
+    else
+      update public.posts
+        set dislike_count = dislike_count + 1,
+            reaction_count = greatest(reaction_count - 1, 0)
+        where id = new.post_id;
+    end if;
+    return new;
   end if;
   return null;
 end;
@@ -92,7 +122,7 @@ $$ language plpgsql security definer;
 
 drop trigger if exists on_reaction_change on public.reactions;
 create trigger on_reaction_change
-  after insert or delete on public.reactions
+  after insert or delete or update on public.reactions
   for each row execute function public.handle_reaction_change();
 
 create or replace function public.handle_report_insert()
@@ -107,3 +137,14 @@ drop trigger if exists on_report_insert on public.reports;
 create trigger on_report_insert
   after insert on public.reports
   for each row execute function public.handle_report_insert();
+
+-- ---------------------------------------------------------------------------
+-- 비추(dislike) 기능 추가 마이그레이션
+-- 이미 위 스키마를 적용한 기존 DB라면 아래만 SQL Editor에서 실행하면 된다.
+-- (신규 설치는 위 create 문에 이미 반영돼 있어 실행할 필요 없음)
+-- ---------------------------------------------------------------------------
+-- alter table public.posts add column if not exists dislike_count integer not null default 0;
+-- alter table public.reactions add column if not exists kind text not null default 'like'
+--   check (kind in ('like', 'dislike'));
+-- 이후 위의 handle_reaction_change 함수와 on_reaction_change 트리거,
+-- "본인 반응만 변경 가능" update 정책을 그대로 다시 실행하면 최신 상태가 된다.

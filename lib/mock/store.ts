@@ -4,7 +4,17 @@ import type { Category, Post } from "@/types/post";
 import { randomMobNickname } from "@/lib/mobNames";
 
 const POSTS_KEY = "mobforest:mock:posts";
+const NICKNAME_KEY = "mobforest:mock:nickname";
 const reportedKey = (postId: string) => `mobforest:mock:reported:${postId}`;
+
+// mock 모드에서도 세션(브라우저)당 닉네임 하나를 뽑아 저장하고 계속 재사용한다.
+function getSessionNickname(): string {
+  const existing = window.localStorage.getItem(NICKNAME_KEY);
+  if (existing) return existing;
+  const nickname = randomMobNickname();
+  window.localStorage.setItem(NICKNAME_KEY, nickname);
+  return nickname;
+}
 
 function readAll(): Post[] {
   if (typeof window === "undefined") return [];
@@ -37,8 +47,9 @@ export function mockCreatePost(input: {
     category: input.category,
     content: input.content,
     image_url: input.image_url ?? null,
-    mob_nickname: randomMobNickname(),
+    mob_nickname: getSessionNickname(),
     reaction_count: 0,
+    dislike_count: 0,
     report_count: 0,
     created_at: new Date().toISOString(),
   };
@@ -47,20 +58,34 @@ export function mockCreatePost(input: {
   return post;
 }
 
-export function mockToggleReaction(
+type ReactionKind = "like" | "dislike";
+
+export function mockSetReaction(
   postId: string,
-  wasReacted: boolean
-): { ok: boolean; reacted: boolean } {
+  current: ReactionKind | null,
+  next: ReactionKind | null
+): { ok: boolean; reaction: ReactionKind | null } {
   const posts = readAll();
   const index = posts.findIndex((p) => p.id === postId);
-  if (index === -1) return { ok: false, reacted: wasReacted };
+  if (index === -1) return { ok: false, reaction: current };
+
+  const post = posts[index];
+  let { reaction_count: likeCount, dislike_count: dislikeCount } = post;
+
+  // 기존 반응 제거
+  if (current === "like") likeCount = Math.max(0, likeCount - 1);
+  if (current === "dislike") dislikeCount = Math.max(0, dislikeCount - 1);
+  // 새 반응 반영
+  if (next === "like") likeCount += 1;
+  if (next === "dislike") dislikeCount += 1;
 
   posts[index] = {
-    ...posts[index],
-    reaction_count: Math.max(0, posts[index].reaction_count + (wasReacted ? -1 : 1)),
+    ...post,
+    reaction_count: likeCount,
+    dislike_count: dislikeCount,
   };
   writeAll(posts);
-  return { ok: true, reacted: !wasReacted };
+  return { ok: true, reaction: next };
 }
 
 export function mockReportPost(postId: string): {

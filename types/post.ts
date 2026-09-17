@@ -25,6 +25,7 @@ export interface Post {
   image_url: string | null;
   mob_nickname: string;
   reaction_count: number;
+  dislike_count: number;
   report_count: number;
   created_at: string;
 }
