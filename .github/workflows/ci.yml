@@ -26,8 +26,7 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: 타입 체크
-        run: npx tsc --noEmit
-
-      - name: 빌드
+      # next build가 타입 체크까지 함께 수행한다.
+      # (별도 tsc는 Next 자동 생성 타입(LayoutProps 등)이 build 전엔 없어서 실패하므로 빼둠)
+      - name: 빌드 (타입 체크 포함)
         run: npm run build
