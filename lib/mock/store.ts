@@ -4,7 +4,17 @@ import type { Category, Post } from "@/types/post";
 import { randomMobNickname } from "@/lib/mobNames";
 
 const POSTS_KEY = "mobforest:mock:posts";
+const NICKNAME_KEY = "mobforest:mock:nickname";
 const reportedKey = (postId: string) => `mobforest:mock:reported:${postId}`;
+
+// mock 모드에서도 세션(브라우저)당 닉네임 하나를 뽑아 저장하고 계속 재사용한다.
+function getSessionNickname(): string {
+  const existing = window.localStorage.getItem(NICKNAME_KEY);
+  if (existing) return existing;
+  const nickname = randomMobNickname();
+  window.localStorage.setItem(NICKNAME_KEY, nickname);
+  return nickname;
+}
 
 function readAll(): Post[] {
   if (typeof window === "undefined") return [];
@@ -37,7 +47,7 @@ export function mockCreatePost(input: {
     category: input.category,
     content: input.content,
     image_url: input.image_url ?? null,
-    mob_nickname: randomMobNickname(),
+    mob_nickname: getSessionNickname(),
     reaction_count: 0,
     dislike_count: 0,
     report_count: 0,
