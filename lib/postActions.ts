@@ -1,6 +1,11 @@
 import { getSupabaseBrowserClient } from "./supabase/client";
 import { ensureAnonSession } from "./supabase/anonAuth";
-import { mockDeletePost, mockReportPost, mockSetReaction } from "./mock/store";
+import {
+  mockDeletePost,
+  mockEditPost,
+  mockReportPost,
+  mockSetReaction,
+} from "./mock/store";
 
 export type ReactionKind = "like" | "dislike";
 
@@ -97,4 +102,32 @@ export async function deletePost(
   }
 
   return { ok: true, message: "삭제했어요." };
+}
+
+export async function editPost(
+  postId: string,
+  password: string,
+  content: string,
+  imageUrl: string | null
+): Promise<{ ok: boolean; message: string }> {
+  const supabase = getSupabaseBrowserClient();
+  if (!supabase) return mockEditPost(postId, password, content, imageUrl);
+
+  // 수정 권한도 삭제와 마찬가지로 세션이 아니라 비밀번호로 판별한다.
+  const { data, error } = await supabase.rpc("update_post_with_password", {
+    post_id: postId,
+    password,
+    new_content: content,
+    new_image_url: imageUrl,
+  });
+
+  if (error) {
+    return { ok: false, message: "수정에 실패했어요." };
+  }
+
+  if (!data) {
+    return { ok: false, message: "비밀번호가 맞지 않아요." };
+  }
+
+  return { ok: true, message: "수정했어요." };
 }

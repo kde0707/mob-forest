@@ -50,7 +50,13 @@ export default function PostDetailClient({
           </p>
         )}
         {post && (
-          <PostCard post={post} onDeleted={() => router.push(`/post/${category}`)} />
+          <PostCard
+            post={post}
+            onDeleted={() => router.push(`/post/${category}`)}
+            onEdited={(_postId, updates) =>
+              setPost((prev) => (prev ? { ...prev, ...updates } : prev))
+            }
+          />
         )}
       </div>
     </div>
