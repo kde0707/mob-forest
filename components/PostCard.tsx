@@ -1,5 +1,9 @@
+"use client";
+
+import { useState } from "react";
 import Image from "next/image";
 import type { Post } from "@/types/post";
+import { isReportHidden } from "@/types/post";
 import { CATEGORY_STYLE } from "@/lib/categoryStyles";
 import { formatRelativeTime } from "@/lib/formatTime";
 import ReactionBar from "./ReactionBar";
@@ -14,6 +18,8 @@ export default function PostCard({
   onDeleted: (postId: string) => void;
 }) {
   const style = CATEGORY_STYLE[post.category];
+  const [revealed, setRevealed] = useState(false);
+  const hidden = isReportHidden(post) && !revealed;
 
   return (
     <article className="sticker-card p-5">
@@ -28,20 +34,35 @@ export default function PostCard({
         </time>
       </div>
 
-      <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-ink">
-        {post.content}
-      </p>
-
-      {post.image_url && (
-        <div className="relative mt-3 aspect-video w-full overflow-hidden rounded-2xl border-2 border-ink">
-          <Image
-            src={post.image_url}
-            alt="첨부 이미지"
-            fill
-            className="object-cover"
-            unoptimized
-          />
+      {hidden ? (
+        <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border-2 border-dashed border-ink-muted px-3 py-4">
+          <p className="text-sm text-ink-muted">신고가 누적된 글이에요</p>
+          <button
+            type="button"
+            onClick={() => setRevealed(true)}
+            className="shrink-0 rounded-full border-2 border-ink bg-surface px-3 py-1 font-display text-xs active:scale-90"
+          >
+            보기
+          </button>
         </div>
+      ) : (
+        <>
+          <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-ink">
+            {post.content}
+          </p>
+
+          {post.image_url && (
+            <div className="relative mt-3 aspect-video w-full overflow-hidden rounded-2xl border-2 border-ink">
+              <Image
+                src={post.image_url}
+                alt="첨부 이미지"
+                fill
+                className="object-cover"
+                unoptimized
+              />
+            </div>
+          )}
+        </>
       )}
 
       <div className="mt-4 flex items-center justify-between">
