@@ -262,7 +262,43 @@ $$;
 revoke all on function public.delete_post_with_password(uuid, text) from public;
 grant execute on function public.delete_post_with_password(uuid, text) to anon, authenticated;
 
--- 6. 댓글 삭제용 비밀번호: 글 삭제와 동일한 방식.
+-- 6. 글 수정용 비밀번호: 삭제와 동일하게 비밀번호 대조로 본인 확인 후 내용만 갱신한다.
+create or replace function public.update_post_with_password(
+  post_id uuid,
+  password text,
+  new_content text,
+  new_image_url text default null
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  stored_hash text;
+begin
+  select password_hash into stored_hash from public.posts where id = post_id;
+
+  if stored_hash is null then
+    return false;
+  end if;
+
+  if stored_hash = extensions.crypt(password, stored_hash) then
+    update public.posts
+      set content = new_content,
+          image_url = new_image_url
+      where id = post_id;
+    return true;
+  end if;
+
+  return false;
+end;
+$$;
+
+revoke all on function public.update_post_with_password(uuid, text, text, text) from public;
+grant execute on function public.update_post_with_password(uuid, text, text, text) to anon, authenticated;
+
+-- 7. 댓글 삭제용 비밀번호: 글 삭제와 동일한 방식.
 -- 소프트 삭제: row와 답글은 그대로 두고 내용만 비운 뒤 deleted_at을 찍는다.
 -- 스레드 연속성을 유지하기 위해 실제로 지우지 않는다.
 create or replace function public.delete_comment_with_password(comment_id uuid, password text)
@@ -296,7 +332,7 @@ $$;
 revoke all on function public.delete_comment_with_password(uuid, text) from public;
 grant execute on function public.delete_comment_with_password(uuid, text) to anon, authenticated;
 
--- 7. 댓글 수정용 비밀번호: 삭제와 동일한 방식으로 대조 후 내용만 갱신한다.
+-- 8. 댓글 수정용 비밀번호: 삭제와 동일한 방식으로 대조 후 내용만 갱신한다.
 create or replace function public.update_comment_with_password(
   comment_id uuid,
   password text,
@@ -352,6 +388,13 @@ grant execute on function public.update_comment_with_password(uuid, text, text) 
 -- 그대로 다시 실행하면 최신 상태가 된다.
 -- (참고: 이 마이그레이션 적용 전에 작성된 글은 password_hash가 비어 있어
 --  비밀번호로 삭제할 수 없다.)
+
+-- ---------------------------------------------------------------------------
+-- 글 수정용 비밀번호 마이그레이션
+-- 이미 위 스키마를 적용한 기존 DB라면 아래 함수 정의만 SQL Editor에서 다시 실행하면 된다.
+-- (신규 설치는 위 create 문에 이미 반영돼 있어 실행할 필요 없음)
+-- ---------------------------------------------------------------------------
+-- 위의 update_post_with_password 함수 정의(revoke/grant 포함)를 그대로 실행하면 된다.
 
 -- ---------------------------------------------------------------------------
 -- 댓글·대댓글 기능 추가 마이그레이션

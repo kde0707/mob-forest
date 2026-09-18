@@ -58,6 +58,9 @@ export default function PostDetailClient({
             <PostCard
               post={post}
               onDeleted={() => router.push(`/post/${category}`)}
+              onEdited={(_postId, updates) =>
+                setPost((prev) => (prev ? { ...prev, ...updates } : prev))
+              }
             />
             <CommentSection
               postId={postId}

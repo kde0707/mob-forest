@@ -87,6 +87,28 @@ export function mockDeletePost(
   return { ok: true, message: "삭제했어요." };
 }
 
+export function mockEditPost(
+  postId: string,
+  password: string,
+  content: string,
+  imageUrl: string | null
+): { ok: boolean; message: string } {
+  const stored = window.localStorage.getItem(passwordKey(postId));
+  if (stored === null || stored !== password) {
+    return { ok: false, message: "비밀번호가 맞지 않아요." };
+  }
+
+  const posts = readAll();
+  const index = posts.findIndex((p) => p.id === postId);
+  if (index === -1) {
+    return { ok: false, message: "글을 찾을 수 없어요." };
+  }
+
+  posts[index] = { ...posts[index], content, image_url: imageUrl };
+  writeAll(posts);
+  return { ok: true, message: "수정했어요." };
+}
+
 type ReactionKind = "like" | "dislike";
 
 export function mockSetReaction(
