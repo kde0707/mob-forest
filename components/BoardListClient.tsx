@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import type { Category, Post } from "@/types/post";
 import { CATEGORY_DESCRIPTION, CATEGORY_LABEL } from "@/types/post";
 import { CATEGORY_STYLE } from "@/lib/categoryStyles";
 import { mockListPosts } from "@/lib/mock/store";
-import Composer from "./Composer";
-import PostCard from "./PostCard";
+import PostListItem from "./PostListItem";
 
-export default function BoardClient({
+export default function BoardListClient({
   category,
   initialPosts,
   configured,
@@ -48,27 +48,23 @@ export default function BoardClient({
         </div>
       )}
 
-      <div className="mb-6">
-        <Composer
-          category={category}
-          onPosted={(post) => setPosts((prev) => [post, ...prev])}
-        />
+      <div className="mb-6 flex justify-end">
+        <Link
+          href={`/post/${category}/write`}
+          className="rounded-full border-2 border-ink bg-accent px-4 py-1.5 font-display text-sm text-ink-on-accent transition active:scale-95"
+        >
+          글쓰기
+        </Link>
       </div>
 
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
         {posts.length === 0 && (
           <p className="py-10 text-center text-sm text-ink-muted">
             아직 아무 모브도 지나가지 않았어요. 첫 흔적을 남겨보세요!
           </p>
         )}
         {posts.map((post) => (
-          <PostCard
-            key={post.id}
-            post={post}
-            onDeleted={(postId) =>
-              setPosts((prev) => prev.filter((p) => p.id !== postId))
-            }
-          />
+          <PostListItem key={post.id} post={post} />
         ))}
       </div>
     </div>
