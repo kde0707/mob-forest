@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Post } from "@/types/post";
+import { isReportHidden } from "@/types/post";
 import { CATEGORY_STYLE } from "@/lib/categoryStyles";
 import { formatRelativeTime } from "@/lib/formatTime";
 
@@ -14,6 +15,8 @@ function previewOf(content: string): string {
 
 export default function PostListItem({ post }: { post: Post }) {
   const style = CATEGORY_STYLE[post.category];
+  const hidden = isReportHidden(post);
+  const preview = hidden ? "신고가 누적된 글이에요" : previewOf(post.content);
 
   return (
     <Link
@@ -23,7 +26,13 @@ export default function PostListItem({ post }: { post: Post }) {
       <div className="flex min-w-0 items-center gap-3">
         <span className={`shrink-0 text-lg ${style.text}`}>{style.emoji}</span>
         <div className="min-w-0">
-          <p className="truncate text-sm text-ink">{previewOf(post.content)}</p>
+          <p
+            className={`truncate text-sm ${
+              hidden ? "italic text-ink-muted" : "text-ink"
+            }`}
+          >
+            {preview}
+          </p>
           <p className="mt-0.5 text-xs text-ink-muted">
             {post.mob_nickname} · {formatRelativeTime(post.created_at)}
           </p>
