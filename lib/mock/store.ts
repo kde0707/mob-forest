@@ -3,6 +3,7 @@
 import type { Category, Post } from "@/types/post";
 import type { Comment } from "@/types/comment";
 import { randomMobNickname } from "@/lib/mobNames";
+import { weekAgoIso } from "@/lib/formatTime";
 
 const POSTS_KEY = "mobforest:mock:posts";
 const COMMENTS_KEY = "mobforest:mock:comments";
@@ -46,6 +47,23 @@ export function mockListPosts(category?: Category): Post[] {
 
 export function mockGetPost(id: string): Post | null {
   return readAll().find((p) => p.id === id) ?? null;
+}
+
+export function mockListTopPosts(limit: number, category?: Category): Post[] {
+  const weekAgo = weekAgoIso();
+  return readAll()
+    .filter(
+      (p) =>
+        p.reaction_count > 0 &&
+        p.created_at >= weekAgo &&
+        (!category || p.category === category)
+    )
+    .sort(
+      (a, b) =>
+        b.reaction_count - a.reaction_count ||
+        b.created_at.localeCompare(a.created_at)
+    )
+    .slice(0, limit);
 }
 
 export function mockCreatePost(input: {
