@@ -4,18 +4,22 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Category, Post } from "@/types/post";
+import type { Comment } from "@/types/comment";
 import { mockGetPost } from "@/lib/mock/store";
 import PostCard from "./PostCard";
+import CommentSection from "./CommentSection";
 
 export default function PostDetailClient({
   category,
   postId,
   initialPost,
+  initialComments,
   configured,
 }: {
   category: Category;
   postId: string;
   initialPost: Post | null;
+  initialComments: Comment[];
   configured: boolean;
 }) {
   const router = useRouter();
@@ -50,13 +54,20 @@ export default function PostDetailClient({
           </p>
         )}
         {post && (
-          <PostCard
-            post={post}
-            onDeleted={() => router.push(`/post/${category}`)}
-            onEdited={(_postId, updates) =>
-              setPost((prev) => (prev ? { ...prev, ...updates } : prev))
-            }
-          />
+          <>
+            <PostCard
+              post={post}
+              onDeleted={() => router.push(`/post/${category}`)}
+              onEdited={(_postId, updates) =>
+                setPost((prev) => (prev ? { ...prev, ...updates } : prev))
+              }
+            />
+            <CommentSection
+              postId={postId}
+              initialComments={initialComments}
+              configured={configured}
+            />
+          </>
         )}
       </div>
     </div>

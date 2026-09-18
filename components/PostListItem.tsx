@@ -38,8 +38,9 @@ export default function PostListItem({ post }: { post: Post }) {
           </p>
         </div>
       </div>
-      <span className="shrink-0 font-display text-xs text-ink-soft">
-        🐾 {post.reaction_count}
+      <span className="flex shrink-0 items-center gap-2 font-display text-xs text-ink-soft">
+        <span>🐾 {post.reaction_count}</span>
+        <span>💬 {post.comment_count}</span>
       </span>
     </Link>
   );

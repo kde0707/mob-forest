@@ -16,6 +16,7 @@ create table if not exists public.posts (
   reaction_count integer not null default 0,
   dislike_count integer not null default 0,
   report_count integer not null default 0,
+  comment_count integer not null default 0,
   status text not null default 'published' check (status in ('published', 'hidden')),
   created_at timestamptz not null default now()
 );
@@ -85,7 +86,53 @@ create policy "로그인(익명 포함)한 사용자만 신고 가능"
 -- 신고 목록은 운영자만 봐야 하므로 공개 select 정책을 만들지 않는다
 -- (Supabase 대시보드에서 service role로만 조회)
 
--- 4. 카운터 트리거: reactions/reports 증감을 posts에 반영
+-- 3-1. comments: 댓글 + 대댓글(부모 댓글까지만, 대댓글의 대댓글은 없음)
+create table if not exists public.comments (
+  id uuid primary key default gen_random_uuid(),
+  post_id uuid not null references public.posts (id) on delete cascade,
+  parent_comment_id uuid references public.comments (id) on delete cascade,
+  -- 삭제된 댓글은 소프트 삭제(deleted_at)로 내용을 비우기 때문에 하한 없이 길이만 제한한다.
+  content text not null check (char_length(content) <= 500),
+  mob_nickname text not null,
+  author_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  password_hash text not null,
+  report_count integer not null default 0,
+  deleted_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists comments_post_id_created_at_idx
+  on public.comments (post_id, created_at asc);
+
+alter table public.comments enable row level security;
+
+create policy "누구나 댓글을 읽을 수 있음"
+  on public.comments for select
+  using (true);
+
+create policy "로그인(익명 포함)한 사용자만 댓글을 남길 수 있음"
+  on public.comments for insert
+  with check (auth.uid() = author_id);
+
+-- 3-2. comment_reports: 댓글 신고 (글 신고와 동일한 최소 모더레이션 장치)
+create table if not exists public.comment_reports (
+  id uuid primary key default gen_random_uuid(),
+  comment_id uuid not null references public.comments (id) on delete cascade,
+  reporter_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  reason text,
+  created_at timestamptz not null default now(),
+  unique (comment_id, reporter_id)
+);
+
+alter table public.comment_reports enable row level security;
+
+create policy "로그인(익명 포함)한 사용자만 댓글 신고 가능"
+  on public.comment_reports for insert
+  with check (auth.uid() = reporter_id);
+
+-- 댓글 신고 목록도 글 신고와 마찬가지로 공개 select 정책을 만들지 않는다
+
+-- 4. 카운터 트리거: reactions/reports/comments 증감을 posts에 반영
 -- kind별로 reaction_count(공감) / dislike_count(비추)를 나눠서 관리하고,
 -- 공감 <-> 비추 전환(UPDATE)도 양쪽 카운터를 함께 보정한다.
 create or replace function public.handle_reaction_change()
@@ -140,6 +187,38 @@ drop trigger if exists on_report_insert on public.reports;
 create trigger on_report_insert
   after insert on public.reports
   for each row execute function public.handle_report_insert();
+
+create or replace function public.handle_comment_report_insert()
+returns trigger as $$
+begin
+  update public.comments set report_count = report_count + 1 where id = new.comment_id;
+  return new;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists on_comment_report_insert on public.comment_reports;
+create trigger on_comment_report_insert
+  after insert on public.comment_reports
+  for each row execute function public.handle_comment_report_insert();
+
+create or replace function public.handle_comment_change()
+returns trigger as $$
+begin
+  if (tg_op = 'INSERT') then
+    update public.posts set comment_count = comment_count + 1 where id = new.post_id;
+    return new;
+  elsif (tg_op = 'DELETE') then
+    update public.posts set comment_count = greatest(comment_count - 1, 0) where id = old.post_id;
+    return old;
+  end if;
+  return null;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists on_comment_change on public.comments;
+create trigger on_comment_change
+  after insert or delete on public.comments
+  for each row execute function public.handle_comment_change();
 
 -- 5. 글 삭제용 비밀번호: 세션이 아니라 비밀번호 대조로 본인 확인한다.
 -- 해시 생성/대조 모두 DB 함수 안에서만 이뤄지고, password_hash 컬럼은
@@ -219,6 +298,74 @@ $$;
 revoke all on function public.update_post_with_password(uuid, text, text, text) from public;
 grant execute on function public.update_post_with_password(uuid, text, text, text) to anon, authenticated;
 
+-- 7. 댓글 삭제용 비밀번호: 글 삭제와 동일한 방식.
+-- 소프트 삭제: row와 답글은 그대로 두고 내용만 비운 뒤 deleted_at을 찍는다.
+-- 스레드 연속성을 유지하기 위해 실제로 지우지 않는다.
+create or replace function public.delete_comment_with_password(comment_id uuid, password text)
+returns boolean
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  stored_hash text;
+begin
+  select password_hash into stored_hash
+    from public.comments
+    where id = comment_id and deleted_at is null;
+
+  if stored_hash is null then
+    return false;
+  end if;
+
+  if stored_hash = extensions.crypt(password, stored_hash) then
+    update public.comments
+      set content = '', deleted_at = now()
+      where id = comment_id;
+    return true;
+  end if;
+
+  return false;
+end;
+$$;
+
+revoke all on function public.delete_comment_with_password(uuid, text) from public;
+grant execute on function public.delete_comment_with_password(uuid, text) to anon, authenticated;
+
+-- 8. 댓글 수정용 비밀번호: 삭제와 동일한 방식으로 대조 후 내용만 갱신한다.
+create or replace function public.update_comment_with_password(
+  comment_id uuid,
+  password text,
+  new_content text
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  stored_hash text;
+begin
+  select password_hash into stored_hash
+    from public.comments
+    where id = comment_id and deleted_at is null;
+
+  if stored_hash is null then
+    return false;
+  end if;
+
+  if stored_hash = extensions.crypt(password, stored_hash) then
+    update public.comments set content = new_content where id = comment_id;
+    return true;
+  end if;
+
+  return false;
+end;
+$$;
+
+revoke all on function public.update_comment_with_password(uuid, text, text) from public;
+grant execute on function public.update_comment_with_password(uuid, text, text) to anon, authenticated;
+
 -- ---------------------------------------------------------------------------
 -- 비추(dislike) 기능 추가 마이그레이션
 -- 이미 위 스키마를 적용한 기존 DB라면 아래만 SQL Editor에서 실행하면 된다.
@@ -248,3 +395,34 @@ grant execute on function public.update_post_with_password(uuid, text, text, tex
 -- (신규 설치는 위 create 문에 이미 반영돼 있어 실행할 필요 없음)
 -- ---------------------------------------------------------------------------
 -- 위의 update_post_with_password 함수 정의(revoke/grant 포함)를 그대로 실행하면 된다.
+
+-- ---------------------------------------------------------------------------
+-- 댓글·대댓글 기능 추가 마이그레이션
+-- 이미 위 스키마를 적용한 기존 DB라면 아래만 SQL Editor에서 실행하면 된다.
+-- (신규 설치는 위 create 문/함수 정의에 이미 반영돼 있어 실행할 필요 없음)
+-- ---------------------------------------------------------------------------
+-- alter table public.posts add column if not exists comment_count integer not null default 0;
+-- 이후 위의 comments 테이블 생성문, RLS 정책, handle_comment_change 함수와
+-- on_comment_change 트리거, delete_comment_with_password/update_comment_with_password
+-- 함수(revoke/grant 포함)를 그대로 실행하면 최신 상태가 된다.
+
+-- ---------------------------------------------------------------------------
+-- 댓글 신고 기능 추가 마이그레이션
+-- 이미 위 댓글 마이그레이션까지 적용한 기존 DB라면 아래만 SQL Editor에서 실행하면 된다.
+-- (신규 설치는 위 create 문/함수 정의에 이미 반영돼 있어 실행할 필요 없음)
+-- ---------------------------------------------------------------------------
+-- alter table public.comments add column if not exists report_count integer not null default 0;
+-- 이후 위의 comment_reports 테이블 생성문, RLS 정책, handle_comment_report_insert
+-- 함수와 on_comment_report_insert 트리거를 그대로 실행하면 최신 상태가 된다.
+
+-- ---------------------------------------------------------------------------
+-- 댓글 소프트 삭제(삭제된 댓글입니다 표시) 마이그레이션
+-- 이미 위 댓글 마이그레이션까지 적용한 기존 DB라면 아래만 SQL Editor에서 실행하면 된다.
+-- (신규 설치는 위 create 문/함수 정의에 이미 반영돼 있어 실행할 필요 없음)
+-- ---------------------------------------------------------------------------
+-- alter table public.comments add column if not exists deleted_at timestamptz;
+-- alter table public.comments drop constraint if exists comments_content_check;
+-- alter table public.comments add constraint comments_content_check check (char_length(content) <= 500);
+-- 이후 위의 delete_comment_with_password/update_comment_with_password 함수 정의
+-- (revoke/grant 포함)를 그대로 다시 실행하면 최신 상태가 된다.
+-- (참고: 이 마이그레이션 전에 삭제된 댓글은 이미 DB에서 지워진 상태라 되돌릴 수 없다.)

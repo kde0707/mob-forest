@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { isCategory, POST_COLUMNS, type Post } from "@/types/post";
+import { COMMENT_COLUMNS, type Comment } from "@/types/comment";
 import { getSupabasePublicServerClient } from "@/lib/supabase/publicServer";
 import PostDetailClient from "@/components/PostDetailClient";
 
@@ -15,6 +16,7 @@ export default async function PostDetailPage({
 
   const supabase = getSupabasePublicServerClient();
   let post: Post | null = null;
+  let comments: Comment[] = [];
 
   if (supabase) {
     const { data } = await supabase
@@ -27,6 +29,14 @@ export default async function PostDetailPage({
 
     if (!data) notFound();
     post = data;
+
+    const { data: commentData } = await supabase
+      .from("comments")
+      .select(COMMENT_COLUMNS)
+      .eq("post_id", id)
+      .order("created_at", { ascending: true });
+
+    comments = commentData ?? [];
   }
 
   return (
@@ -34,6 +44,7 @@ export default async function PostDetailPage({
       category={category}
       postId={id}
       initialPost={post}
+      initialComments={comments}
       configured={Boolean(supabase)}
     />
   );
