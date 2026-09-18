@@ -9,16 +9,23 @@ import { formatRelativeTime } from "@/lib/formatTime";
 import ReactionBar from "./ReactionBar";
 import ReportButton from "./ReportButton";
 import DeleteButton from "./DeleteButton";
+import EditPanel from "./EditPanel";
 
 export default function PostCard({
   post,
   onDeleted,
+  onEdited,
 }: {
   post: Post;
   onDeleted: (postId: string) => void;
+  onEdited: (
+    postId: string,
+    updates: { content: string; image_url: string | null }
+  ) => void;
 }) {
   const style = CATEGORY_STYLE[post.category];
   const [revealed, setRevealed] = useState(false);
+  const [editing, setEditing] = useState(false);
   const hidden = isReportHidden(post) && !revealed;
 
   return (
@@ -34,7 +41,19 @@ export default function PostCard({
         </time>
       </div>
 
-      {hidden ? (
+      {editing ? (
+        <EditPanel
+          postId={post.id}
+          category={post.category}
+          initialContent={post.content}
+          initialImageUrl={post.image_url}
+          onCancel={() => setEditing(false)}
+          onSaved={(updates) => {
+            onEdited(post.id, updates);
+            setEditing(false);
+          }}
+        />
+      ) : hidden ? (
         <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border-2 border-dashed border-ink-muted px-3 py-4">
           <p className="text-sm text-ink-muted">신고가 누적된 글이에요</p>
           <button
@@ -72,6 +91,15 @@ export default function PostCard({
           initialDislikes={post.dislike_count}
         />
         <span className="flex items-center gap-3">
+          {!editing && !hidden && (
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="text-xs text-ink-muted underline decoration-dotted underline-offset-2 hover:text-ink-soft"
+            >
+              수정
+            </button>
+          )}
           <DeleteButton postId={post.id} onDeleted={onDeleted} />
           <ReportButton postId={post.id} />
         </span>
