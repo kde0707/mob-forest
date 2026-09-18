@@ -37,9 +37,13 @@ export default function CommentSection({
   }
 
   function handleDeleted(commentId: string) {
+    // 소프트 삭제라 목록에서 지우지 않고 "삭제된 댓글입니다"로만 바꾼다 —
+    // 답글이 달려있어도 스레드가 끊기지 않는다.
     setComments((prev) =>
-      prev.filter(
-        (c) => c.id !== commentId && c.parent_comment_id !== commentId
+      prev.map((c) =>
+        c.id === commentId
+          ? { ...c, content: "", deleted_at: new Date().toISOString() }
+          : c
       )
     );
   }

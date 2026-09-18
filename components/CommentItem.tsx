@@ -27,6 +27,24 @@ export default function CommentItem({
   const [revealed, setRevealed] = useState(false);
   const hidden = isReportHidden(comment) && !revealed;
 
+  if (comment.deleted_at) {
+    return (
+      <div>
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-display text-xs text-ink-muted">
+            {comment.mob_nickname}
+          </span>
+          <time className="text-xs text-ink-muted">
+            {formatRelativeTime(comment.created_at)}
+          </time>
+        </div>
+        <p className="mt-1.5 text-sm italic text-ink-muted">
+          삭제된 댓글입니다.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between gap-2">

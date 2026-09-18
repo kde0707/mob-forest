@@ -180,6 +180,7 @@ export function mockCreateComment(
     content,
     mob_nickname: getSessionNickname(),
     report_count: 0,
+    deleted_at: null,
     created_at: new Date().toISOString(),
   };
 
@@ -220,14 +221,19 @@ export function mockDeleteComment(
     return { ok: false, message: "비밀번호가 맞지 않아요." };
   }
 
-  const comment = readAllComments().find((c) => c.id === commentId);
-  if (!comment) {
+  const comments = readAllComments();
+  const index = comments.findIndex((c) => c.id === commentId);
+  if (index === -1) {
     return { ok: false, message: "댓글을 찾을 수 없어요." };
   }
 
-  writeAllComments(readAllComments().filter((c) => c.id !== commentId));
-  window.localStorage.removeItem(commentPasswordKey(commentId));
-  bumpCommentCount(comment.post_id, -1);
+  // 소프트 삭제: 답글이 그대로 남도록 실제로 지우지 않고 표시만 바꾼다.
+  comments[index] = {
+    ...comments[index],
+    content: "",
+    deleted_at: new Date().toISOString(),
+  };
+  writeAllComments(comments);
 
   return { ok: true, message: "삭제했어요." };
 }
