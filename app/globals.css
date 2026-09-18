@@ -80,6 +80,27 @@ body {
   font-family: var(--font-body);
 }
 
+/* 모브 커서: 평소엔 회색 모브, 클릭 가능한 곳에서는 나뭇잎을 들어 가리킴 */
+html {
+  cursor: url("/cursors/mob-leaf.svg") 7 6, auto;
+}
+
+a,
+button,
+[role="button"],
+summary,
+label,
+input[type="submit"],
+input[type="button"] {
+  cursor: url("/cursors/mob-leaf-active.svg") 4 4, pointer;
+}
+
+input:not([type="submit"]):not([type="button"]),
+textarea,
+select {
+  cursor: text;
+}
+
 h1,
 h2,
 h3,
