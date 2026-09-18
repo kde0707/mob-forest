@@ -1,12 +1,18 @@
 // Supabase 연결 전, 브라우저 localStorage만으로 동작하는 목업 데이터 저장소.
 // 새로고침해도 남아있지만 다른 브라우저/기기와는 공유되지 않는다.
 import type { Category, Post } from "@/types/post";
+import type { Comment } from "@/types/comment";
 import { randomMobNickname } from "@/lib/mobNames";
 
 const POSTS_KEY = "mobforest:mock:posts";
+const COMMENTS_KEY = "mobforest:mock:comments";
 const NICKNAME_KEY = "mobforest:mock:nickname";
 const reportedKey = (postId: string) => `mobforest:mock:reported:${postId}`;
 const passwordKey = (postId: string) => `mobforest:mock:pw:${postId}`;
+const commentPasswordKey = (commentId: string) =>
+  `mobforest:mock:comment-pw:${commentId}`;
+const commentReportedKey = (commentId: string) =>
+  `mobforest:mock:comment-reported:${commentId}`;
 
 // mock 모드에서도 세션(브라우저)당 닉네임 하나를 뽑아 저장하고 계속 재사용한다.
 function getSessionNickname(): string {
@@ -57,6 +63,7 @@ export function mockCreatePost(input: {
     reaction_count: 0,
     dislike_count: 0,
     report_count: 0,
+    comment_count: 0,
     created_at: new Date().toISOString(),
   };
 
@@ -126,5 +133,123 @@ export function mockReportPost(postId: string): {
   }
 
   window.localStorage.setItem(reportedKey(postId), "1");
+  return { ok: true, message: "신고했어요. (목업 모드 — 실제 전송은 안 돼요)" };
+}
+
+function readAllComments(): Comment[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(COMMENTS_KEY);
+    return raw ? (JSON.parse(raw) as Comment[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeAllComments(comments: Comment[]) {
+  window.localStorage.setItem(COMMENTS_KEY, JSON.stringify(comments));
+}
+
+function bumpCommentCount(postId: string, delta: number) {
+  const posts = readAll();
+  const index = posts.findIndex((p) => p.id === postId);
+  if (index === -1) return;
+  posts[index] = {
+    ...posts[index],
+    comment_count: Math.max(0, posts[index].comment_count + delta),
+  };
+  writeAll(posts);
+}
+
+export function mockListComments(postId: string): Comment[] {
+  return readAllComments()
+    .filter((c) => c.post_id === postId)
+    .sort((a, b) => a.created_at.localeCompare(b.created_at));
+}
+
+export function mockCreateComment(
+  postId: string,
+  parentCommentId: string | null,
+  content: string,
+  password: string
+): { ok: boolean; message: string; comment?: Comment } {
+  const comment: Comment = {
+    id: crypto.randomUUID(),
+    post_id: postId,
+    parent_comment_id: parentCommentId,
+    content,
+    mob_nickname: getSessionNickname(),
+    report_count: 0,
+    created_at: new Date().toISOString(),
+  };
+
+  writeAllComments([...readAllComments(), comment]);
+  window.localStorage.setItem(commentPasswordKey(comment.id), password);
+  bumpCommentCount(postId, 1);
+
+  return { ok: true, message: "댓글을 남겼어요.", comment };
+}
+
+export function mockEditComment(
+  commentId: string,
+  password: string,
+  content: string
+): { ok: boolean; message: string } {
+  const stored = window.localStorage.getItem(commentPasswordKey(commentId));
+  if (stored === null || stored !== password) {
+    return { ok: false, message: "비밀번호가 맞지 않아요." };
+  }
+
+  const comments = readAllComments();
+  const index = comments.findIndex((c) => c.id === commentId);
+  if (index === -1) {
+    return { ok: false, message: "댓글을 찾을 수 없어요." };
+  }
+
+  comments[index] = { ...comments[index], content };
+  writeAllComments(comments);
+  return { ok: true, message: "수정했어요." };
+}
+
+export function mockDeleteComment(
+  commentId: string,
+  password: string
+): { ok: boolean; message: string } {
+  const stored = window.localStorage.getItem(commentPasswordKey(commentId));
+  if (stored === null || stored !== password) {
+    return { ok: false, message: "비밀번호가 맞지 않아요." };
+  }
+
+  const comment = readAllComments().find((c) => c.id === commentId);
+  if (!comment) {
+    return { ok: false, message: "댓글을 찾을 수 없어요." };
+  }
+
+  writeAllComments(readAllComments().filter((c) => c.id !== commentId));
+  window.localStorage.removeItem(commentPasswordKey(commentId));
+  bumpCommentCount(comment.post_id, -1);
+
+  return { ok: true, message: "삭제했어요." };
+}
+
+export function mockReportComment(commentId: string): {
+  ok: boolean;
+  message: string;
+} {
+  if (window.localStorage.getItem(commentReportedKey(commentId)) === "1") {
+    return { ok: false, message: "이미 신고했어요." };
+  }
+
+  const comments = readAllComments();
+  const index = comments.findIndex((c) => c.id === commentId);
+  if (index !== -1) {
+    comments[index] = {
+      ...comments[index],
+      report_count: comments[index].report_count + 1,
+    };
+    writeAllComments(comments);
+  }
+
+  window.localStorage.setItem(commentReportedKey(commentId), "1");
   return { ok: true, message: "신고했어요. (목업 모드 — 실제 전송은 안 돼요)" };
 }

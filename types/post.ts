@@ -27,13 +27,14 @@ export interface Post {
   reaction_count: number;
   dislike_count: number;
   report_count: number;
+  comment_count: number;
   created_at: string;
 }
 
 // posts 테이블 select 시 항상 이 컬럼만 지정한다.
 // password_hash는 절대 클라이언트로 내려가면 안 되기 때문에 select("*")를 쓰지 않는다.
 export const POST_COLUMNS =
-  "id, category, content, image_url, mob_nickname, reaction_count, dislike_count, report_count, created_at";
+  "id, category, content, image_url, mob_nickname, reaction_count, dislike_count, report_count, comment_count, created_at";
 
 // 신고가 이 수치 이상 쌓이면 DB에서 지우거나 숨기지 않고, 화면에서만 접어서 보여준다.
 export const REPORT_HIDE_THRESHOLD = 5;
