@@ -25,11 +25,11 @@
   --lavender: #b79ee8;
   --lavender-soft: #e5d4f5;
 
-  /* 카테고리 컬러 */
-  --cat-sighting: #2f8f6c;
-  --cat-sighting-bg: #d6f5e8;
-  --cat-chat: #d24d86;
-  --cat-chat-bg: #ffe1ec;
+  /* 카테고리 컬러: 목격담(핑크) / 잡담(파랑) / 짤·밈(노랑) */
+  --cat-sighting: #e0568b;
+  --cat-sighting-bg: #ffe1ec;
+  --cat-chat: #3f7dd9;
+  --cat-chat-bg: #dce8fb;
   --cat-meme: #b8860b;
   --cat-meme-bg: #ffe9a8;
 
@@ -75,7 +75,12 @@
 }
 
 body {
-  background: var(--canvas);
+  background-color: var(--canvas);
+  background-image: url("/backgrounds/scenery.png");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+  background-attachment: fixed;
   color: var(--ink);
   font-family: var(--font-body);
 }

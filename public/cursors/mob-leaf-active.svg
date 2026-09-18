@@ -9,13 +9,19 @@
     stroke-linejoin="round"
   />
   <path d="M7 12 L9 15" stroke="#5b4636" stroke-width="1.2" stroke-linecap="round" />
-  <g fill="#9b9b9b" stroke="#5b4636" stroke-width="1.4" stroke-linejoin="round">
-    <circle cx="13" cy="13" r="2.4" />
-    <circle cx="25" cy="13" r="2.4" />
-    <ellipse cx="19" cy="22" rx="8" ry="7" />
-  </g>
-  <g fill="#5b4636">
-    <circle cx="16" cy="21" r="1" />
-    <circle cx="22" cy="21" r="1" />
+  <g transform="translate(5 6)">
+    <path
+      d="M14 25 C4 25 1.5 20 1.5 15 C1.5 11 4 8 6.5 6 C4 5 3 2 6 2.5 C9 4 11 6 14 6 C17 6 19 4 22 2.5 C24 2 23 5 21.5 6 C24 8 26.5 11 26.5 15 C26.5 20 24 25 14 25 Z"
+      fill="#9b9b9b"
+      stroke="#5b4636"
+      stroke-width="1.6"
+      stroke-linejoin="round"
+    />
+    <g stroke="#5b4636" stroke-width="1.1" stroke-linecap="round">
+      <line x1="6.5" y1="19" x2="9" y2="16" />
+      <line x1="10.3" y1="19" x2="12.8" y2="16" />
+      <line x1="15.3" y1="19" x2="17.8" y2="16" />
+      <line x1="19" y1="19" x2="21.5" y2="16" />
+    </g>
   </g>
 </svg>

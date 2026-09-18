@@ -69,7 +69,6 @@ export default async function Home() {
           <section className="sticker-card relative overflow-hidden bg-canvas-mint p-8 text-center sm:p-12">
             <span className="sticker-blob absolute -right-6 -top-8 h-28 w-28 border-2 border-ink bg-yellow-soft opacity-70" />
             <span className="sticker-blob absolute -bottom-10 -left-8 h-32 w-32 border-2 border-ink bg-lavender-soft opacity-60" />
-
             <span className="relative inline-block rounded-full border-2 border-ink bg-surface px-3 py-1 font-display text-xs text-ink-soft">
               비공식 팬 커뮤니티
             </span>
