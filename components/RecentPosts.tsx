@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { Post } from "@/types/post";
 import { mockListPosts } from "@/lib/mock/store";
-import PostCard from "./PostCard";
+import PostListItem from "./PostListItem";
 
 export default function RecentPosts({
   initialPosts,
@@ -31,15 +31,9 @@ export default function RecentPosts({
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       {posts.map((post) => (
-        <PostCard
-          key={post.id}
-          post={post}
-          onDeleted={(postId) =>
-            setPosts((prev) => prev.filter((p) => p.id !== postId))
-          }
-        />
+        <PostListItem key={post.id} post={post} />
       ))}
     </div>
   );

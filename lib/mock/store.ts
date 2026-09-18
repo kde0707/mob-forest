@@ -38,6 +38,10 @@ export function mockListPosts(category?: Category): Post[] {
   return category ? posts.filter((p) => p.category === category) : posts;
 }
 
+export function mockGetPost(id: string): Post | null {
+  return readAll().find((p) => p.id === id) ?? null;
+}
+
 export function mockCreatePost(input: {
   category: Category;
   content: string;

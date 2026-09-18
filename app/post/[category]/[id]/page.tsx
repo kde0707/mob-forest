@@ -1,37 +1,39 @@
 import { notFound } from "next/navigation";
 import { isCategory, POST_COLUMNS, type Post } from "@/types/post";
 import { getSupabasePublicServerClient } from "@/lib/supabase/publicServer";
-import BoardListClient from "@/components/BoardListClient";
+import PostDetailClient from "@/components/PostDetailClient";
 
 export const dynamic = "force-dynamic";
 
-export default async function BoardPage({
+export default async function PostDetailPage({
   params,
 }: {
-  params: Promise<{ category: string }>;
+  params: Promise<{ category: string; id: string }>;
 }) {
-  const { category } = await params;
+  const { category, id } = await params;
   if (!isCategory(category)) notFound();
 
   const supabase = getSupabasePublicServerClient();
-  let posts: Post[] = [];
+  let post: Post | null = null;
 
   if (supabase) {
     const { data } = await supabase
       .from("posts")
       .select(POST_COLUMNS)
+      .eq("id", id)
       .eq("category", category)
       .eq("status", "published")
-      .order("created_at", { ascending: false })
-      .limit(50);
+      .maybeSingle();
 
-    posts = data ?? [];
+    if (!data) notFound();
+    post = data;
   }
 
   return (
-    <BoardListClient
+    <PostDetailClient
       category={category}
-      initialPosts={posts}
+      postId={id}
+      initialPost={post}
       configured={Boolean(supabase)}
     />
   );
